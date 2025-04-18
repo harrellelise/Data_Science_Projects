@@ -1,0 +1,326 @@
+---
+title: 'STAT228: Homework 9'
+author: 'Elise Harrell'
+date: "`r Sys.Date()`"
+output:
+  pdf_document: default
+  word_document: default
+header-includes:
+- \usepackage{fvextra}
+- \DefineVerbatimEnvironment{Highlighting}{Verbatim}{breaklines,commandchars=\\\{\}}
+---
+
+```{r}
+library(gapminder)
+```
+
+
+# Introduction
+
+In the first part of the assignment, you'll demonstrate your understanding of factors in R using base R and the forcats package.
+
+In the second part of the assignment, you’ll update and polish your data science portfolio that we started in class using GitHub Pages.
+
+
+```{r, warning = FALSE, message = FALSE}
+library(tidyverse)
+```
+
+*Reminders*
+
+- Use the forcats cheat sheet as a reference. 
+- Follow best practices when writing and commenting your code
+- Add informative axis labels, legends, titles etc. to plots
+- Start earlier rather than later
+- Knit early and often
+- Post your questions on [piazza](https://piazza.com/class/m5vgvr2v7ry2sp/). If your question requires posting your code, send an email instead [admin-sp25-stat228-01-group@simmons.edu](mailto:admin-sp25-stat228-01-group@simmons.edu).
+
+# Part 1: Working with factors
+
+You will practice your factor and other data science skills using a [Tidy Tuesday dataset](https://github.com/rfordatascience/tidytuesday/blob/main/data/2025/2025-01-21/readme.md) on Himalayan Mountaineering Expeditions.
+
+The `exped_tidy.csv` dataset contains information on 882 expeditions in the Nepal Himalaya from 2020 to 2024. It includes 62 columns detailing various aspects of each expeditions such as the year, the host country, etc.
+
+The `peaks_tidy.csv` dataset contains information on 480 mountain peaks. It include 29 columns describing the peak such as the the name of the peak, height in meters, etc.
+
+For a full description of the datasets, see the  [README](https://github.com/rfordatascience/tidytuesday/blob/main/data/2025/2025-01-21/readme.md).
+
+***NOTE 1**: sometimes the readme defines the class of a column to be factor but (by default) R loads it in as a character. This gets even more confusing when the column name contains the suffix '`_FACTOR` (!). This is wild data and so it can be messy!*
+
+```{r}
+# Run the following code to download a Tidy Tuesday dataset on mountain climbing
+
+expeditions_df <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/main/data/2025/2025-01-21/exped_tidy.csv')
+
+peaks_df <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/main/data/2025/2025-01-21/peaks_tidy.csv')
+```
+
+## Q1
+
+The code below pulls out the 3 unique host countries in the `expeditions_df` dataset. (Despite the variable name in the dataframe, the column is not actually a factor...See **NOTE 1** above.)
+
+```{r}
+unique_host_countries <- expeditions_df |>
+  distinct(HOST_FACTOR) |>
+  pull()
+```
+### Q1.1
+
+Convert the character vector `unique_host_countries` to a factor using `fct` and `factor`.
+
+```{r}
+fct_rslt <- fct(unique_host_countries)
+print(fct_rslt)
+
+factor_rslt <- factor(unique_host_countries)
+print(factor_rslt)
+```
+
+### Q1.2
+
+Do the 2 functions produce the same output?  Why or why not?
+
+DONE: The two functions do not produce the same output, because we did not assign the levels, when not assigned levels in fct, it kept the order the same, but in Factor, it put them in alphabetical order.
+
+## Q2
+
+### Q2.1
+
+Using `expeditions_df`, create a bar plot of the number of expeditions by season. The dataset uses `Autumn` for one of the seasons. Recode this level as `Fall` instead.  Sort the seasons temporally, i.e., Spring, Summer, Fall, Winter. Your plot should have 4 bars (1 for each season).
+
+**You must use a forcats function to rename this factor level to receive credit.** 
+
+```{r}
+expeditions_df <- expeditions_df %>%
+  mutate(
+    SEASON_FACTOR = fct_recode(SEASON_FACTOR,"Fall" = "Autumn")
+  ) %>% 
+  mutate (
+    SEASON_FACTOR = fct_relevel(SEASON_FACTOR, "Spring", "Summer", "Fall", "Winter")
+  )
+
+ggplot(expeditions_df, aes(x = SEASON_FACTOR)) +
+  geom_bar(fill = "blue") +
+  labs(
+    title = "Number of Expeditions by Season",
+    x = "Season",
+    y = "Number of Expeditions"
+  ) +
+  theme_minimal()
+```
+
+### Q2.2
+
+Upload a screenshot of your plot to Gradescope.
+
+## Q3
+
+Create a bar plot of expedition count for the top 5 most common peaks, with all remaining peaks grouped in an "Other" category. 
+
+* The y-axis should display expedition counts.
+* The x-axis should show **peak names (not peak IDs)**.
+* Order the bars from most to least common, placing the "Other" bar at the end.
+* Your final plot should have 6 bars.
+
+**Hints**
+
+1. The peak name (`PKNAME`) is contained in `peaks_df'. Join `expeditions_df` and `peaks_df` together so that each expedition has peak information.
+1. To relevel a factor with a specific factor level at the end, use this recipe: `fct_relevel(<f>, "<last_level>", after = Inf)` where `<f>` is a factor, and `<last_level>` is the name of the level to to put at the end.
+
+### Q3.1
+
+Write your code below
+
+```{r}
+joined <- expeditions_df %>%
+  left_join(peaks_df, by = "PEAKID") %>%
+  mutate(
+    PKNAME_LUMPED = fct_lump_n(PKNAME, n = 5, other_level = "Other"),
+    PKNAME_LUMPED = fct_infreq(PKNAME_LUMPED),
+    PKNAME_LUMPED = fct_relevel(PKNAME_LUMPED, "Other", after = Inf)
+  )
+
+ggplot(joined, aes(x = PKNAME_LUMPED)) +
+  geom_bar(fill = "blue") +
+  labs(
+    title = "Top 5 Most Common Peaks",
+    subtitle = "Peaks by Exibition Count",
+    x = "Peak Name",
+    y = "Number of Expeditions "
+  ) +
+  theme_minimal()
+```
+
+### Q3.2
+
+Upload a screenshot of your plot to Gradescope.
+
+### Q3.3
+
+What is 1 advantage and 1 disadvantage of lumping infrequent categories together when performing data analysis?
+
+DONE: It makes plots way easier to read, since there is less information t take in.. but it also loses a lot of the information depending on the amount of infrequent categories. You might miss something when ignoring them.
+
+## Q4
+
+For this set of questions, you will look at the number of expeditions by country as a function of time.
+
+### Q4.1
+
+First, find the 6 nations that had the most expeditions in the dataset.
+
+**Hint:** after transforming your data, use the dplyr function `pull()` to return a single column from a dataframe as a factor.
+
+**You must identify these countries programmatically, i.e., you may not "hardcode" the names of the countries**. The former approach will make your code more reusable and robust if the data changes in the future.
+
+```{r}
+most_exp <- expeditions_df %>%
+  count(NATION, sort = TRUE) %>%
+  slice_head(n = 6) %>%
+  pull(NATION) %>%
+  factor()
+```
+
+### Q4.2
+
+Filter `expeditions_df` to just the top countries. 
+
+**NOTE 2:** if you were unable to calculate the top countries, you may hardcode them as `Austria`, `Japan`, `Russia`, `Spain`, and `Switzerland`. (The hardcoding is just so you can keep on going with the assignment.)
+
+Calculate the total number of expeditions for each year for each one of these countries.
+
+(If a country didn't have any data for a particular year, you don't have to any special -- just leave the data as is.)
+
+Next, create a **line plot** of the # of expeditions on the y-axis versus year on the x-axis. Use 1 color line for each nation.
+
+Update the factor levels so that the order of the nations in the legend matches the order of expedition counts in the most recent year (2024).
+
+For example, if USA has the highest number of expeditions in 2024, it should appear at the top of the legend.
+
+You must use a programmatic approach — **do not hardcode the order of countries**. The former approach will make your code more reusable and robust if the data changes in the future.
+
+**Hint:** Consult the forcats cheat sheet for a function that could do a lot of the factor heavy lifting
+
+```{r}
+top_count <- expeditions_df %>%
+  filter(NATION %in% most_exp) %>% 
+  group_by(YEAR, NATION) %>%
+  summarise(expedition_count = n(), .groups = "drop")
+
+nation_2024 <-top_count %>% 
+  filter(YEAR==2024) %>%
+  arrange(desc(expedition_count)) %>%
+  pull(NATION)
+
+year_ct <- top_count %>%
+  mutate(NATION = fct_relevel(NATION,nation_2024))
+
+ggplot(year_ct, aes(x = YEAR, y = expedition_count, color = NATION)) +
+  geom_line(size = 1.2) +
+  labs(
+    title = "Expeditions Over Time",
+    subtitle = "by Top 6 Countries",
+    x = "Year",
+    y = "# of Expeditions",
+    color = "Nation"
+  ) +
+  theme_minimal()
+
+
+
+```
+
+### Q4.3
+
+Upload a screenshot of your plot to gradescope.
+
+# Part 2: GitHub Portfolio
+
+## Overview
+
+In this part of the assignment, you’ll update and polish your data science portfolio that we started in class using GitHub Pages. This site will showcase your work from this course. You are also encouraged (but not required) to include work from other classes, internships, etc. By the end, you’ll have a shareable website that highlights your skills and strengthens your professional presence online.
+
+
+## Step 1: Host your STAT228 mini-projects on GitHub
+
+For each mini-project (2):
+1. Create a new GitHub repository
+1. OPTIONAL: Add a README.md file to the GitHub repository describing what this project is about
+1. OPTIONAL: make any improvements/incorporate feedback to your project
+1. On your local computer, knit the R Markdown file to html
+1. Upload the R Project folder to the GitHub repository
+1. Enable GitHub Pages for the repository and set the source to the `main` branch (just like we did in the class tutorial)
+1. Once the repository site is built, navigate to the URL containing your blog post.  Save this URL for step 2.
+
+## Step 2: complete the homepage of your GitHub portfolio
+
+Update your homepage (`index.md`) to include the following sections:
+
+### Biographical information
+
+- Your full or preferred name
+- Your major
+- Your expected graduation year
+- Your university
+- A short description of your academic/professional interests (1–2 sentences)
+- A short list or sentences highlighting your technical skills
+
+#### OPTIONAL
+
+- A photo of yourself
+- A link to your CV
+- Your email
+- A link to your LinkedIn or other relevant site
+- A link to your resume
+
+### Site purpose
+
+- A brief statement explaining what you're using this site for, e.g., showcasing your data science work.
+
+### Projects section
+
+- A separate subsection for each STAT228 mini-project with:
+  - The project title
+  - A 1–2 sentence summary of the project
+  - A link to the project's blog post. (You will have saved this URL in step 1.)
+  
+#### OPTIONAL
+
+- Additional subsections for other projects you’ve worked on from other classes, internships, etc.
+
+## How it will be graded
+
+Your portfolio will be graded on:
+
+* completeness: did you add the required information listed above? Do all links work? Are the blog posts rendered correctly?
+* professionalism: is the text clear and free of spelling and grammatically issues? Does the site have a clean, organized, and readable layout? Ideally, this will grow into a website that you'd be proud to share with potential employers. 
+
+
+## What to submit on Gradescope
+
+### Q5
+
+#### Q5.1
+
+Paste a link to your portfolio homepage.
+
+#### Q5.2
+
+Upload a screenshot of your portfolio homepage. (This helps shows that your site was working and published on time.)
+
+#### Q5.3
+Upload your `index.md` file.  Viewing the file allows me to us see what you wrote and how your site is structured, even if something went wrong with publishing.
+
+# Add your answers to Gradescope 
+
+## Q6
+You will upload a copy of this `.Rmd` to Gradescope.
+
+Before submitting, ensure that:
+
+* You have answered all questions.
+* You have removed all TODO placeholders. **TIP: search for TODO to see if you’re missing anything**
+
+In Moodle, navigate to the homework section and click on this homework's Gradescope link. Copy and paste your answers from the R notebook to the appropriate section in Gradescope.
+
+# All done!
