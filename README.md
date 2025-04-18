@@ -1,4 +1,4 @@
-# Data_Science_Projects
+## Intro
 
 Hello my name is Elise Harrell. I am a senior in computer science, expected to graduate in 2025 at Simmons University.
 
